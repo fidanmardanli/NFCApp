@@ -10,7 +10,8 @@ class Logs extends Model
     use HasFactory;
     protected $table = 'logs';
 
-    protected $timestamp = false;
+    public $timestamps = false; // Fix typo
+
     protected $fillable = [
         'user_id',
         'access_points_id',
