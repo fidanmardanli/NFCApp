@@ -22,6 +22,7 @@ Route::get('getAllUsers', [DashboardController::class, 'getAllUsers'])->name('ge
 
 Route::get('getAllRooms', [RoomController::class, 'Index'])->name('getAllRooms');
 Route::get('getRoomById/{room_id}', [RoomController::class, 'getRoomById'])->name('getRoomById');
+Route::get('whoEnteredMyRoom/{room_id}', [RoomController::class, 'whoEnteredMyRoom'])->name('whoEnteredMyRoom');
 
 Route::post('updateUserPersonalInformation', [SettingsController::class, 'updateUserPersonalInformation'])->name('updateUserPersonalInformation');
 Route::apiResource('rooms', RoomsController::class);
@@ -38,6 +39,12 @@ Route::post('updateUserById/{id}', [UserController::class, 'updateById']);
 Route::post('deleteById/{id}', [UserController::class, 'deleteById']);
 Route::get('validateUid/{uid}/{accessPointId}', [UserController::class, 'validateUid']);
 Route::post('rooms/create', [RoomController::class, 'create']);
+//{
+//    "buildings_id": 1,
+//    "room_name": "Conference Room",
+//    "room_type": "Meeting",
+//    "room_status": true
+//}
 
 Route::delete('rooms/deleteById/{room_id}', [RoomController::class, 'deleteById']);
 

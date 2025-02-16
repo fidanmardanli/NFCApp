@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PersonalInformations;
 use App\Models\User;
+use App\Models\Logs;
 use App\Models\GroupPermissions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -133,10 +134,20 @@ class UserController extends Controller
 //        }
 //
 //    }
+    private function logAccessAttempt($userId, $accessPointId, $cardId, $action)
+    {
+        Logs::create([
+            'user_id' => $userId,
+            'access_point_id' => $accessPointId,
+            'card_id' => $cardId,
+            'action' => $action
+        ]);
+    }
+
+
 
     public function validateUid($uid, $accessPointId)
     {
-        // Check if UID format is correct
         $pattern = '/^\d{4} \d{4} \d{4} \d{4}$/';
         if (preg_match($pattern, $uid) !== 1) {
             return response()->json(['success' => false, 'message' => 'Invalid format'], 404);
@@ -145,16 +156,34 @@ class UserController extends Controller
         // Find the user with the given UID and load necessary relationships
         $user = PersonalInformations::where('uid', $uid)->with(['user', 'user.groups'])->first();
         if (!$user) {
+            // Log the denied entry attempt if user is not found using insert
+            DB::table('logs')->insert([
+                'user_id' => $user->user_id, // Use a placeholder value like 0 instead of null
+                'access_point_id' => $accessPointId, // Correct column name
+                'card_id' => 1, // Assuming no card is linked (use appropriate logic here)
+                'action' => 'entry denied',
+            ]);
+
+            // Return user not found response
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        // Check if user has access to the specified access point through their group's permissions
-        $hasAccess = $user->user->groups->pluck('id')->contains(function($groupId) use ($accessPointId) {
+        // Check if the user has access to the specified access point through their group's permissions
+        $hasAccess = $user->user->groups->pluck('id')->contains(function ($groupId) use ($accessPointId) {
             return GroupPermissions::where('groups_id', $groupId)
-                ->where('access_points_id', $accessPointId)
+                ->where('access_points_id', $accessPointId) // Ensure correct column name
                 ->exists();
         });
 
+        // Log the access attempt with appropriate action (entry granted or denied) using insert
+        DB::table('logs')->insert([
+            'user_id' => $user->user_id, // Correct user ID from user relationship
+            'access_point_id' => $accessPointId, // Correct column name
+            'card_id' => 1, // If a card is linked, set the correct card ID here
+            'action' => $hasAccess ? 'entry granted' : 'entry denied',
+        ]);
+
+        // Return access denied response if the user doesn't have access
         if (!$hasAccess) {
             return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
@@ -162,6 +191,8 @@ class UserController extends Controller
         // Return user information if access is granted
         return response()->json(['success' => true, 'data' => $user]);
     }
+
+
 
     public function store1(Request $request)
     {
