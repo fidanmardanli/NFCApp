@@ -5,13 +5,23 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\RoomsController;
 use App\Http\Controllers\RoomController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\UserController;
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
+    Route::get('whoEnteredMyRoom', [RoomController::class, 'whoEnteredMyRoom'])
+        ->name('whoEnteredMyRoom');
 });
+Route::post('/login_app', [AuthController::class, 'login_app'])->name('login_app');
+
 
 //admin start
 Route::get('getUserDetailedInformation/{user_id}', [DashboardController::class, 'getUserDetailedInformation'])->name('getUserDetailedInformation');
@@ -22,7 +32,7 @@ Route::get('getAllUsers', [DashboardController::class, 'getAllUsers'])->name('ge
 
 Route::get('getAllRooms', [RoomController::class, 'Index'])->name('getAllRooms');
 Route::get('getRoomById/{room_id}', [RoomController::class, 'getRoomById'])->name('getRoomById');
-Route::get('whoEnteredMyRoom/{room_id}', [RoomController::class, 'whoEnteredMyRoom'])->name('whoEnteredMyRoom');
+
 
 Route::post('updateUserPersonalInformation', [SettingsController::class, 'updateUserPersonalInformation'])->name('updateUserPersonalInformation');
 Route::apiResource('rooms', RoomsController::class);

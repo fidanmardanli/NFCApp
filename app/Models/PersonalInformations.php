@@ -16,7 +16,9 @@ class PersonalInformations extends Model
         'username',
         'birthdate',
         'gender',
-        'image'
+        'image',
+        'myRoomID',
+
     ];
 
     public function user()

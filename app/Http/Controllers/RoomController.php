@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Rooms;
 use App\Models\AccessPoints;
 use App\Models\Logs;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class RoomController extends Controller
 {
@@ -23,18 +25,18 @@ class RoomController extends Controller
         return response()->json($room, 200);
     }
 
-    public function whoEnteredMyRoom($room_id)
+    public function whoEnteredMyRoom()
     {
+        $room_id = Auth::user()->personal_informations->myRoomID;
         // Step 1: Find the room by its ID
         $my_room = Rooms::find($room_id);
-
         if (!$my_room) {
             // If the room is not found, return an error
             return response()->json(['success' => false, 'message' => 'Room not found'], 404);
         }
 
         // Step 2: Find the related access point by matching room_id
-        $accessPoint = AccessPoints::where('rooms_id', $room_id)->first();
+        $accessPoint = AccessPoints::where('room_id', $room_id)->first();
 
         if (!$accessPoint) {
             // If no access point is found for the room, return an error

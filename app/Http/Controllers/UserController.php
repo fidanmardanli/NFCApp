@@ -90,7 +90,7 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $data  = $request->all();
-
+$request->name;
         $user = User::create($data);
         if(!$user)
         {
@@ -103,8 +103,7 @@ class UserController extends Controller
             'fullName' => $request->fullname,
             'username' => $request->username,
             'birthdate' => $request->birthdate,
-            'gender' => "female",
-            'image' => $request->profile_image,
+            'myRoomID' => $request->myRoomID,
         ];
 
         $personal_informations = PersonalInformations::create($userPersonalInformations);
@@ -116,24 +115,7 @@ class UserController extends Controller
         return response()->json(['success' => true, 'message' => 'User created']);
     }
 
-//    public function validateUid($code)
-////        1111 1111 1111 1111
-//    {
-//        $pattern = '/^\d{4} \d{4} \d{4} \d{4}$/';
-//        if(preg_match($pattern, $code) === 1)
-//        {
-//            $user = PersonalInformations::where('uid', $code)->with('user')->first();
-//            if (!$user) {
-//                return response()->json(['success' => false, 'message' => 'User not found'], 404);
-//            }
-//            return response()->json(['success' => true, 'data' => $user]);
-//        }
-//        else
-//        {
-//            return response()->json(['success' => false, 'message' => 'Invalid format'], 404);
-//        }
-//
-//    }
+
     private function logAccessAttempt($userId, $accessPointId, $cardId, $action)
     {
         Logs::create([
@@ -148,42 +130,50 @@ class UserController extends Controller
 
     public function validateUid($uid, $accessPointId)
     {
+        // Validate UID format (e.g., "1234 5678 9012 3456")
         $pattern = '/^\d{4} \d{4} \d{4} \d{4}$/';
         if (preg_match($pattern, $uid) !== 1) {
-            return response()->json(['success' => false, 'message' => 'Invalid format'], 404);
+            return response()->json(['success' => false, 'message' => 'Invalid format'], 400);
         }
 
         // Find the user with the given UID and load necessary relationships
-        $user = PersonalInformations::where('uid', $uid)->with(['user', 'user.groups'])->first();
-        if (!$user) {
-            // Log the denied entry attempt if user is not found using insert
+        $user = PersonalInformations::where('uid', $uid)
+            ->with(['user', 'user.groups'])
+            ->first();
+
+        if (!$user || !$user->user) {
+            // Log the denied entry attempt (user not found)
             DB::table('logs')->insert([
-                'user_id' => $user->user_id, // Use a placeholder value like 0 instead of null
-                'access_point_id' => $accessPointId, // Correct column name
-                'card_id' => 1, // Assuming no card is linked (use appropriate logic here)
-                'action' => 'entry denied',
+                'user_id' => 0, // Use 0 instead of null for system logs
+                'access_point_id' => $accessPointId,
+                'card_id' => 1, // Default card ID (modify based on logic)
+                'action' => 'entry denied'
             ]);
 
-            // Return user not found response
             return response()->json(['success' => false, 'message' => 'User not found'], 404);
         }
 
-        // Check if the user has access to the specified access point through their group's permissions
+        // Ensure groups are loaded before accessing them
+        if (!$user->user->groups || $user->user->groups->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'User has no group assigned'], 403);
+        }
+
+        // Check if the user has access to the specified access point
         $hasAccess = $user->user->groups->pluck('id')->contains(function ($groupId) use ($accessPointId) {
             return GroupPermissions::where('groups_id', $groupId)
-                ->where('access_points_id', $accessPointId) // Ensure correct column name
+                ->where('access_points_id', $accessPointId)
                 ->exists();
         });
 
-        // Log the access attempt with appropriate action (entry granted or denied) using insert
+        // Log the access attempt (entry granted or denied)
         DB::table('logs')->insert([
             'user_id' => $user->user_id, // Correct user ID from user relationship
-            'access_point_id' => $accessPointId, // Correct column name
-            'card_id' => 1, // If a card is linked, set the correct card ID here
-            'action' => $hasAccess ? 'entry granted' : 'entry denied',
+            'access_point_id' => $accessPointId,
+            'card_id' => 1, // If a card is linked, update it accordingly
+            'action' => $hasAccess ? 'entry granted' : 'entry denied'
         ]);
 
-        // Return access denied response if the user doesn't have access
+        // If the user does not have access, deny entry
         if (!$hasAccess) {
             return response()->json(['success' => false, 'message' => 'Access denied'], 403);
         }
@@ -191,6 +181,7 @@ class UserController extends Controller
         // Return user information if access is granted
         return response()->json(['success' => true, 'data' => $user]);
     }
+
 
 
 
