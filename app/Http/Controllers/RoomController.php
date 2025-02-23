@@ -28,35 +28,39 @@ class RoomController extends Controller
     public function whoEnteredMyRoom()
     {
         $room_id = Auth::user()->personal_informations->myRoomID;
+
         // Step 1: Find the room by its ID
         $my_room = Rooms::find($room_id);
         if (!$my_room) {
-            // If the room is not found, return an error
             return response()->json(['success' => false, 'message' => 'Room not found'], 404);
         }
 
-        // Step 2: Find the related access point by matching room_id
+        // Step 2: Find the related access point
         $accessPoint = AccessPoints::where('room_id', $room_id)->first();
-
         if (!$accessPoint) {
-            // If no access point is found for the room, return an error
             return response()->json(['success' => false, 'message' => 'Access point not found for this room'], 404);
         }
 
-        // Step 3: Find all logs related to the access_point_id
-        $logs = Logs::where('access_point_id', $accessPoint->id)
+        // Step 3: Find logs and extract unique names
+        $userNames = Logs::where('access_point_id', $accessPoint->id)
             ->join('personal_informations', 'logs.user_id', '=', 'personal_informations.user_id')
-            ->select('personal_informations.fullName')
-            ->get();
+            ->pluck('personal_informations.fullName')
+            ->unique()
+            ->values(); // Reset array keys
 
-        // Extract the names from the logs collection
-        $userNames = $logs->pluck('fullName');
+        // If no one entered, return a meaningful message
+        if ($userNames->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'data' => 'There is no one entered your room yet'
+            ]);
+        }
 
-        // Return the names of the users
-        return response()->json(['success' => true, 'data' => $userNames]);
+        return response()->json([
+            'success' => true,
+            'data' => $userNames
+        ]);
     }
-
-
 
 
     public function create(Request $request)
